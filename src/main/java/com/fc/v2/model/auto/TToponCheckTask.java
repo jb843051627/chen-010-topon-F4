@@ -48,9 +48,52 @@ public class TToponCheckTask implements Serializable {
     @ApiModelProperty(value = "单条提前派发的自然日数")
     private BigDecimal amount;
 
-    /** 条目情形 0待派 1已派 2派不出去 */
+    /** 所属区 */
+    @TableField("region_name")
+    @ApiModelProperty(value = "所属区")
+    private String regionName;
+
+    /** 养护责任段(空着即挂起) */
+    @TableField("duty_segment")
+    @ApiModelProperty(value = "养护责任段(空着即挂起)")
+    private String dutySegment;
+
+    /** 原定养护员用户id(人已离册即挂起) */
+    @TableField("owner_id")
+    @JsonSerialize(using = ToStringSerializer.class)
+    @ApiModelProperty(value = "原定养护员用户id(人已离册即挂起)")
+    private Long ownerId;
+
+    /** 已向养护员提示遍数(封顶3遍) */
+    @TableField("notify_count")
+    @ApiModelProperty(value = "已向养护员提示遍数(封顶3遍)")
+    private Integer notifyCount;
+
+    /** 最近一个提示日里已提示几声(第三声闸为毛病) */
+    @TableField("day_notify_count")
+    @ApiModelProperty(value = "当日已提示几声(第三声闸为毛病)")
+    private Integer dayNotifyCount;
+
+    /** 最近一遍提示的时刻(隔一轮再提的尺) */
+    @TableField("last_notify_at")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    @ApiModelProperty(value = "最近一遍提示的时刻(隔一轮再提的尺)")
+    private Date lastNotifyAt;
+
+    /** 养护员接话时刻(空=还压在接单人手上) */
+    @TableField("acknowledged_at")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    @ApiModelProperty(value = "养护员接话时刻(空=还压在接单人手上)")
+    private Date acknowledgedAt;
+
+    /** 挂起缘由 */
+    @TableField("hang_reason")
+    @ApiModelProperty(value = "挂起缘由")
+    private String hangReason;
+
+    /** 条目情形 0待派 1已派(养护员已接话) 2派不出去(提满三声转人工) 3挂起 */
     @TableField("status")
-    @ApiModelProperty(value = "条目情形 0待派 1已派 2派不出去")
+    @ApiModelProperty(value = "条目情形 0待派 1已派 2派不出去(转人工) 3挂起")
     private Integer status;
 
     /** 删除标记 0正常 1删除 */
@@ -115,6 +158,70 @@ public class TToponCheckTask implements Serializable {
 
     public void setAmount(BigDecimal amount) {
         this.amount = amount;
+    }
+
+    public String getRegionName() {
+        return regionName;
+    }
+
+    public void setRegionName(String regionName) {
+        this.regionName = regionName;
+    }
+
+    public String getDutySegment() {
+        return dutySegment;
+    }
+
+    public void setDutySegment(String dutySegment) {
+        this.dutySegment = dutySegment;
+    }
+
+    public Long getOwnerId() {
+        return ownerId;
+    }
+
+    public void setOwnerId(Long ownerId) {
+        this.ownerId = ownerId;
+    }
+
+    public Integer getNotifyCount() {
+        return notifyCount;
+    }
+
+    public void setNotifyCount(Integer notifyCount) {
+        this.notifyCount = notifyCount;
+    }
+
+    public Integer getDayNotifyCount() {
+        return dayNotifyCount;
+    }
+
+    public void setDayNotifyCount(Integer dayNotifyCount) {
+        this.dayNotifyCount = dayNotifyCount;
+    }
+
+    public Date getLastNotifyAt() {
+        return lastNotifyAt;
+    }
+
+    public void setLastNotifyAt(Date lastNotifyAt) {
+        this.lastNotifyAt = lastNotifyAt;
+    }
+
+    public Date getAcknowledgedAt() {
+        return acknowledgedAt;
+    }
+
+    public void setAcknowledgedAt(Date acknowledgedAt) {
+        this.acknowledgedAt = acknowledgedAt;
+    }
+
+    public String getHangReason() {
+        return hangReason;
+    }
+
+    public void setHangReason(String hangReason) {
+        this.hangReason = hangReason;
     }
 
     public Integer getStatus() {

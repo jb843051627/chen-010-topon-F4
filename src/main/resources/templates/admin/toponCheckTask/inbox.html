@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:include="include :: header('派工接办台')"/>
+</head>
+<body class="pear-container">
+
+<div class="layui-card">
+    <div class="layui-card-header">压在我手上、尚未接话的单（派单全由系统轮派，这里只应答）</div>
+    <div class="layui-card-body" style="padding:0;">
+        <table class="layui-table" style="margin:0;">
+            <thead><tr><th>派发单号</th><th>所属区</th><th>责任段</th><th>应检截止</th><th>已提示遍数</th><th>操作</th></tr></thead>
+            <tbody id="mine-body"><tr><td colspan="6" style="text-align:center;color:#999;">—</td></tr></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="layui-card">
+    <div class="layui-card-header">挂起台账（科里人工盯着；写明为什么挂，条件补齐下一轮自动回轮）</div>
+    <div class="layui-card-body" style="padding:0;">
+        <table class="layui-table" style="margin:0;">
+            <thead><tr><th>派发单号</th><th>所属区</th><th>责任段</th><th>挂起缘由</th></tr></thead>
+            <tbody id="hung-body"><tr><td colspan="4" style="text-align:center;color:#999;">—</td></tr></tbody>
+        </table>
+    </div>
+</div>
+
+<th:block th:include="include :: footer"/>
+<script>
+layui.use(['layer', 'jquery'], function () {
+    let layer = layui.layer, $ = layui.jquery;
+    let MODULE_PATH = rootPath + "/toponCheckTask";
+
+    function esc(s) { return $('<div>').text(s == null ? '' : s).html(); }
+    function fmt(t) { return t ? String(t).replace('T', ' ').substring(0, 19) : '—'; }
+
+    function loadMine() {
+        $.get(MODULE_PATH + '/mine', function (res) {
+            let list = res.data || [];
+            let $m = $('#mine-body').empty();
+            if (list.length === 0) {
+                $m.html('<tr><td colspan="6" style="text-align:center;color:#999;">手上没有未接的单</td></tr>');
+                return;
+            }
+            list.forEach(function (r) {
+                $m.append('<tr><td>' + esc(r.itemNo) + '</td><td>' + esc(r.regionName) + '</td>'
+                    + '<td>' + esc(r.dutySegment) + '</td><td>' + fmt(r.dueAt) + '</td>'
+                    + '<td>' + (r.notifyCount == null ? 0 : r.notifyCount) + '/3</td>'
+                    + '<td><button class="pear-btn pear-btn-primary pear-btn-sm" data-id="' + r.id + '">接话</button></td></tr>');
+            });
+        });
+    }
+
+    function loadHung() {
+        $.get(MODULE_PATH + '/hung', function (res) {
+            let list = res.data || [];
+            let $h = $('#hung-body').empty();
+            if (list.length === 0) {
+                $h.html('<tr><td colspan="4" style="text-align:center;color:#999;">当前没有挂起条目</td></tr>');
+                return;
+            }
+            list.forEach(function (r) {
+                $h.append('<tr><td>' + esc(r.itemNo) + '</td><td>' + esc(r.regionName) + '</td>'
+                    + '<td>' + esc(r.dutySegment) + '</td><td>' + esc(r.hangReason) + '</td></tr>');
+            });
+        });
+    }
+
+    $('#mine-body').on('click', 'button', function () {
+        let id = $(this).data('id');
+        $.ajax({url: MODULE_PATH + '/acknowledge', type: 'POST', data: {id: id},
+            success: function (res) {
+                layer.msg(res.msg, {icon: res.code === 200 ? 1 : 2, time: 1200});
+                if (res.code === 200) { loadMine(); }
+            }
+        });
+    });
+
+    loadMine();
+    loadHung();
+    setInterval(function () { loadMine(); loadHung(); }, 60000);
+});
+</script>
+</body>
+</html>

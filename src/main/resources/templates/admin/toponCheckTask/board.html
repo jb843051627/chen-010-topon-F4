@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:include="include :: header('定期检验派工摊派看板')"/>
+</head>
+<body class="pear-container">
+
+<div class="layui-card">
+    <div class="layui-card-body">
+        <span style="font-size:16px;font-weight:600;">最近一轮摊派</span>
+        <span id="round-at" class="layui-badge-rim" style="margin-left:10px;">—</span>
+        <span id="win-badge" class="layui-badge layui-bg-gray" style="margin-left:8px;">—</span>
+        <span id="round-msg" class="layui-badge-rim" style="margin-left:8px;font-size:13px;">尚未跑过</span>
+        <button class="pear-btn pear-btn-md pear-btn-primary" id="btn-refresh" style="float:right;">
+            <i class="layui-icon layui-icon-refresh"></i> 刷新回话
+        </button>
+    </div>
+</div>
+
+<!-- 只报当轮格局：当日各区 已派 / 未派 / 挂起，柱状摆开。旁的事一概不上这屏。 -->
+<div class="layui-card">
+    <div class="layui-card-header">
+        当日各区格局（当轮回话所报，柱状/表格同一份数）
+        <button class="pear-btn pear-btn-sm" id="btn-table" style="float:right;">看表格</button>
+    </div>
+    <div class="layui-card-body">
+        <div id="region-chart" style="width:100%;height:380px;"></div>
+        <table id="board-table" class="layui-table" style="display:none;margin-top:10px;">
+            <thead><tr><th>所属区</th><th>已派</th><th>未派</th><th>挂起</th></tr></thead>
+            <tbody id="board-table-body"></tbody>
+        </table>
+    </div>
+</div>
+
+<th:block th:include="include :: footer"/>
+<script>
+layui.use(['layer', 'echarts', 'jquery'], function () {
+    let layer = layui.layer, echarts = layui.echarts, $ = layui.jquery;
+    let MODULE_PATH = rootPath + "/toponCheckTask";
+
+    // 状态三色（已派 good / 未派 中性蓝 / 挂起 serious），已过色觉校验；serious 对浅底
+    // 对比度靠图例文字 + 表格视图补偿，不只靠颜色说话。
+    let C_DISPATCHED = '#0ca30c', C_PENDING = '#2a78d6', C_HUNG = '#ec835a';
+
+    let chart = echarts.init(document.getElementById('region-chart'), 'walden');
+    window.addEventListener('resize', function () { chart.resize(); });
+
+    function emptyChart(msg) {
+        chart.clear();
+        chart.setOption({
+            title: {text: msg, left: 'center', top: 'middle',
+                    textStyle: {color: '#9aa0aa', fontSize: 14, fontWeight: 'normal'}}
+        });
+    }
+
+    function renderChart(boards) {
+        if (!boards || boards.length === 0) { emptyChart('当轮无区数据'); return; }
+        chart.setOption({
+            color: [C_DISPATCHED, C_PENDING, C_HUNG],
+            tooltip: {trigger: 'axis', axisPointer: {type: 'shadow'}},
+            legend: {top: 0, data: ['已派', '未派', '挂起']},
+            grid: {left: 48, right: 20, top: 40, bottom: 30, containLabel: true},
+            xAxis: {type: 'category', data: boards.map(function (b) { return b.region; }),
+                    axisTick: {alignWithLabel: true}, axisLine: {lineStyle: {color: '#ccc'}}},
+            yAxis: {type: 'value', minInterval: 1,
+                    splitLine: {lineStyle: {type: 'dashed', color: '#e6e8eb'}}},
+            series: [
+                {name: '已派', type: 'bar', barMaxWidth: 26,
+                 itemStyle: {borderRadius: [4, 4, 0, 0]},
+                 data: boards.map(function (b) { return b.dispatched; })},
+                {name: '未派', type: 'bar', barMaxWidth: 26,
+                 itemStyle: {borderRadius: [4, 4, 0, 0]},
+                 data: boards.map(function (b) { return b.pending; })},
+                {name: '挂起', type: 'bar', barMaxWidth: 26,
+                 itemStyle: {borderRadius: [4, 4, 0, 0]},
+                 data: boards.map(function (b) { return b.hung; })}
+            ]
+        }, true);
+    }
+
+    function renderTable(boards) {
+        let $b = $('#board-table-body').empty();
+        if (!boards || boards.length === 0) {
+            $b.append('<tr><td colspan="4" style="text-align:center;color:#999;">当轮无区数据</td></tr>');
+            return;
+        }
+        boards.forEach(function (b) {
+            let region = $('<div>').text(b.region).html();
+            $b.append('<tr><td>' + region + '</td>'
+                + '<td><span class="layui-badge-dot" style="background:' + C_DISPATCHED + ';margin-right:6px;"></span>' + b.dispatched + '</td>'
+                + '<td><span class="layui-badge-dot" style="background:' + C_PENDING + ';margin-right:6px;"></span>' + b.pending + '</td>'
+                + '<td><span class="layui-badge-dot" style="background:' + C_HUNG + ';margin-right:6px;"></span>' + b.hung + '</td></tr>');
+        });
+    }
+
+    function fmtAt(t) { return t ? String(t).replace('T', ' ').substring(0, 19) : '—'; }
+
+    function loadReport() {
+        $.get(MODULE_PATH + '/report', function (res) {
+            if (res.code !== 200) { layer.msg(res.msg || '回话取失败', {icon: 2}); return; }
+            let d = res.data;
+            if (!d) {
+                $('#round-at').text('—');
+                $('#round-msg').text(res.msg || '尚未跑过');
+                $('#win-badge').attr('class', 'layui-badge layui-bg-gray').css('background', '').text('—');
+                emptyChart('尚未跑过，等下一轮');
+                renderTable([]);
+                return;
+            }
+            $('#round-at').text(fmtAt(d.at));
+            $('#round-msg').text(d.message || '');
+            if (d.inWindow) {
+                $('#win-badge').attr('class', 'layui-badge').css('background', C_DISPATCHED).text('外业时段内');
+            } else {
+                $('#win-badge').attr('class', 'layui-badge').css('background', C_HUNG).text('窗外按下不表');
+            }
+            renderChart(d.boards);
+            renderTable(d.boards);
+        });
+    }
+
+    $('#btn-refresh').on('click', loadReport);
+    $('#btn-table').on('click', function () {
+        let $t = $('#board-table');
+        $t.toggle();
+        $(this).text($t.is(':visible') ? '看柱状' : '看表格');
+    });
+
+    loadReport();
+    // 看板只读服务回话，不替调度触发；页面永远认服务落下的那份
+    setInterval(loadReport, 60000);
+});
+</script>
+</body>
+</html>

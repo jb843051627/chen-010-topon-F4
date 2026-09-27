@@ -22,12 +22,33 @@ CREATE TABLE IF NOT EXISTS t_topon_bound_line (
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='界线勘定基准档线';
 
+-- 派工摊派口径（服务层唯一一把尺，挑单与落派同谓词）：
+--   1) due_at 永远表示「本轮应检那一天的最后一刻」(23:59:59)；早年只填日子(00:00:00)的
+--      迁入条目由迁移段统一抬到当日 23:59:59，新老单同一个说法，不许各判各的。
+--   2) 提前 amount 个自然日启口（amount 列即“自然日数”）：余下自然日 = 应检日 − 当日（皆按
+--      北京自然日整日相减），余下自然日 ≤ amount 即该派；启口那个自然日一进外业窗就算，
+--      压到应检当天余下 0 日照样算该派，只有一种说法。
+--   3) 外业只认八时半到十七时半(含两端)，窗外即便过了启口线也按下不表，等下一轮。
+--   4) status：0 待派　1 已派(已打 owner 记号；接没接话看 acknowledged_at)　2 派不出去
+--      (提满三声转科里人工，系统住口)　3 挂起。
+--   5) owner_id 是「派出去打的记号」：系统首轮挑中谁就记谁（照各人在手几条摊，手上松的先接），
+--      之后隔轮再提只催同一人，不另派；早年迁入的老单可能带着已离册人的 id，这类挂起写明缘由。
+--   6) 一张单一天里听见第三句重复的话算毛病：day_notify_count 记当日已几声，
+--      调度重入/重复触发把第三声闸下，只计数不出声。
 CREATE TABLE IF NOT EXISTS t_topon_check_task (
   id bigint NOT NULL COMMENT '主键',
   item_no varchar(64) DEFAULT NULL COMMENT '定期检验派发单号',
-  due_at datetime DEFAULT NULL COMMENT '本轮应检之期的日终截止时刻',
+  due_at datetime DEFAULT NULL COMMENT '本轮应检之期的日终截止时刻(当日23:59:59)',
   amount decimal(12,2) DEFAULT NULL COMMENT '单条提前派发的自然日数',
-  status int DEFAULT NULL COMMENT '条目情形 0待派 1已派 2派不出去',
+  region_name varchar(128) DEFAULT NULL COMMENT '所属区',
+  duty_segment varchar(128) DEFAULT NULL COMMENT '养护责任段(空着即挂起)',
+  owner_id bigint DEFAULT NULL COMMENT '摊派接走此单的养护员用户id(派出时打下的记号)',
+  notify_count int DEFAULT 0 COMMENT '已向接单人提示遍数(封顶3遍)',
+  day_notify_count int DEFAULT 0 COMMENT '最近一个提示日里已提示几声(第三声闸为毛病)',
+  last_notify_at datetime DEFAULT NULL COMMENT '最近一遍提示的时刻(隔一轮再提的尺)',
+  acknowledged_at datetime DEFAULT NULL COMMENT '养护员接话时刻(空=还压在接单人手上)',
+  hang_reason varchar(500) DEFAULT NULL COMMENT '挂起缘由',
+  status int DEFAULT NULL COMMENT '条目情形 0待派 1已派 2派不出去(转人工) 3挂起',
   del_flag int DEFAULT '0' COMMENT '删除标记 0正常 1删除',
   create_by varchar(64) DEFAULT NULL COMMENT '创建者',
   create_time datetime DEFAULT NULL COMMENT '创建时间',
