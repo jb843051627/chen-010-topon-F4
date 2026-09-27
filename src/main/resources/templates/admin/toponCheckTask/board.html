@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:include="include :: header('定期检验派发当轮看板')"/>
+</head>
+<body class="pear-container">
+<div class="layui-card">
+    <div class="layui-card-header">当轮看板——各区已派 / 未派 / 挂起</div>
+    <div class="layui-card-body">
+        <!-- 屏上摆什么一概认服务回话，本页不预先钉死任何格局 -->
+        <div id="check-board" style="background-color:#ffffff;min-height:420px;"></div>
+        <div id="check-board-empty" style="display:none;text-align:center;color:#999;padding:40px 0;">
+            在册无条目，本轮无件。
+        </div>
+    </div>
+</div>
+</body>
+<th:block th:include="include :: footer"/>
+<script>
+    layui.use(['jquery', 'echarts'], function () {
+        var $ = layui.jquery;
+        var echarts = layui.echarts;
+        var chart = echarts.init(document.getElementById('check-board'), 'walden');
+
+        function render(board) {
+            if (!board || board.length === 0) {
+                $('#check-board').hide();
+                $('#check-board-empty').show();
+                return;
+            }
+            $('#check-board').show();
+            $('#check-board-empty').hide();
+            var areas = [], dispatched = [], pending = [], suspended = [];
+            board.forEach(function (row) {
+                areas.push(row.areaName);
+                dispatched.push(row.dispatched);
+                pending.push(row.pending);
+                suspended.push(row.suspended);
+            });
+            chart.setOption({
+                tooltip: {trigger: 'axis'},
+                legend: {data: ['已派', '未派', '挂起']},
+                xAxis: {type: 'category', data: areas},
+                yAxis: {type: 'value', minInterval: 1},
+                series: [
+                    {name: '已派', type: 'bar', data: dispatched},
+                    {name: '未派', type: 'bar', data: pending},
+                    {name: '挂起', type: 'bar', data: suspended}
+                ]
+            }, true);
+        }
+
+        function load() {
+            $.getJSON(rootPath + '/toponCheckTask/board', function (res) {
+                // 作数与否一概认服务回话
+                if (res && res.code === 200) {
+                    render(res.data);
+                }
+            });
+        }
+
+        load();
+        window.addEventListener('resize', function () {
+            chart.resize();
+        });
+    });
+</script>
+</html>

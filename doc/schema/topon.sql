@@ -27,7 +27,13 @@ CREATE TABLE IF NOT EXISTS t_topon_check_task (
   item_no varchar(64) DEFAULT NULL COMMENT '定期检验派发单号',
   due_at datetime DEFAULT NULL COMMENT '本轮应检之期的日终截止时刻',
   amount decimal(12,2) DEFAULT NULL COMMENT '单条提前派发的自然日数',
-  status int DEFAULT NULL COMMENT '条目情形 0待派 1已派 2派不出去',
+  area_name varchar(64) DEFAULT NULL COMMENT '所属区',
+  section varchar(128) DEFAULT NULL COMMENT '养护责任段',
+  assignee varchar(64) DEFAULT NULL COMMENT '养护员(接单人)',
+  notice_count int DEFAULT NULL COMMENT '已提遍数 0未提 1已派 2第二遍 3第三遍',
+  last_notice_round bigint DEFAULT NULL COMMENT '最近一次提的轮次',
+  last_notice_at datetime DEFAULT NULL COMMENT '最近一次提的墙钟时刻',
+  status int DEFAULT NULL COMMENT '条目情形 0待派 1已派待接 2派不出去(挂起) 3转人工 4已接',
   del_flag int DEFAULT '0' COMMENT '删除标记 0正常 1删除',
   create_by varchar(64) DEFAULT NULL COMMENT '创建者',
   create_time datetime DEFAULT NULL COMMENT '创建时间',
@@ -130,3 +136,17 @@ INSERT IGNORE INTO t_topon_district_doc (id, site_no, site_name, site_type, road
 VALUES (0, 'XZ00', '临川市城东区明德街道办事处基础档案', '城镇街区', '江南省—临川市—城东区', 40.00, 200.00, 600.00, 0, 0, 'seed', NOW()),
        (1, 'XZ01', '旧临川市城西乡人民政府基础档案（已撤并）', '毗界地段', '江南省—临川市—城西区', 40.00, 200.00, 600.00, 1, 0, 'seed', NOW());
 
+
+-- ---------------------------------------------------------------
+-- 2026-09 摊派扩列（既有库迁移）：所属区/养护责任段/养护员/提遍记录
+-- ALTER TABLE t_topon_check_task
+--   ADD COLUMN area_name varchar(64) DEFAULT NULL COMMENT '所属区' AFTER amount,
+--   ADD COLUMN section varchar(128) DEFAULT NULL COMMENT '养护责任段' AFTER area_name,
+--   ADD COLUMN assignee varchar(64) DEFAULT NULL COMMENT '养护员(接单人)' AFTER section,
+--   ADD COLUMN notice_count int DEFAULT NULL COMMENT '已提遍数 0未提 1已派 2第二遍 3第三遍' AFTER assignee,
+--   ADD COLUMN last_notice_round bigint DEFAULT NULL COMMENT '最近一次提的轮次' AFTER notice_count,
+--   ADD COLUMN last_notice_at datetime DEFAULT NULL COMMENT '最近一次提的墙钟时刻' AFTER last_notice_round;
+--
+-- 周期执行门登记样例（t_sys_quartz_job，科里按作息调 cron；作业时段 08:30-17:30 由服务层把守）：
+-- INSERT INTO t_sys_quartz_job (id, job_name, job_group, invoke_target, cron_expression, misfire_policy, concurrent, status, create_by, create_time)
+-- VALUES (332182389491109899, '定期检验派发', 'topon', 'toponCheckTaskJob.dispatch()', '0 5/30 8-17 * * ?', '2', '1', 0, 'seed', NOW());

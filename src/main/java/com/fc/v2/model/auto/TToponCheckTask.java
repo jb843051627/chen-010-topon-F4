@@ -48,9 +48,40 @@ public class TToponCheckTask implements Serializable {
     @ApiModelProperty(value = "单条提前派发的自然日数")
     private BigDecimal amount;
 
-    /** 条目情形 0待派 1已派 2派不出去 */
+    /** 所属区 */
+    @TableField("area_name")
+    @ApiModelProperty(value = "所属区")
+    private String areaName;
+
+    /** 养护责任段 */
+    @TableField("section")
+    @ApiModelProperty(value = "养护责任段")
+    private String section;
+
+    /** 养护员(接单人) */
+    @TableField("assignee")
+    @ApiModelProperty(value = "养护员(接单人)")
+    private String assignee;
+
+    /** 已提遍数 0未提 1已派 2第二遍 3第三遍 */
+    @TableField("notice_count")
+    @ApiModelProperty(value = "已提遍数 0未提 1已派 2第二遍 3第三遍")
+    private Integer noticeCount;
+
+    /** 最近一次提的轮次 */
+    @TableField("last_notice_round")
+    @ApiModelProperty(value = "最近一次提的轮次")
+    private Long lastNoticeRound;
+
+    /** 最近一次提的墙钟时刻 */
+    @TableField("last_notice_at")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    @ApiModelProperty(value = "最近一次提的墙钟时刻")
+    private Date lastNoticeAt;
+
+    /** 条目情形 0待派 1已派待接 2派不出去(挂起) 3转人工 4已接 */
     @TableField("status")
-    @ApiModelProperty(value = "条目情形 0待派 1已派 2派不出去")
+    @ApiModelProperty(value = "条目情形 0待派 1已派待接 2派不出去(挂起) 3转人工 4已接")
     private Integer status;
 
     /** 删除标记 0正常 1删除 */
@@ -115,6 +146,54 @@ public class TToponCheckTask implements Serializable {
 
     public void setAmount(BigDecimal amount) {
         this.amount = amount;
+    }
+
+    public String getAreaName() {
+        return areaName;
+    }
+
+    public void setAreaName(String areaName) {
+        this.areaName = areaName;
+    }
+
+    public String getSection() {
+        return section;
+    }
+
+    public void setSection(String section) {
+        this.section = section;
+    }
+
+    public String getAssignee() {
+        return assignee;
+    }
+
+    public void setAssignee(String assignee) {
+        this.assignee = assignee;
+    }
+
+    public Integer getNoticeCount() {
+        return noticeCount;
+    }
+
+    public void setNoticeCount(Integer noticeCount) {
+        this.noticeCount = noticeCount;
+    }
+
+    public Long getLastNoticeRound() {
+        return lastNoticeRound;
+    }
+
+    public void setLastNoticeRound(Long lastNoticeRound) {
+        this.lastNoticeRound = lastNoticeRound;
+    }
+
+    public Date getLastNoticeAt() {
+        return lastNoticeAt;
+    }
+
+    public void setLastNoticeAt(Date lastNoticeAt) {
+        this.lastNoticeAt = lastNoticeAt;
     }
 
     public Integer getStatus() {
